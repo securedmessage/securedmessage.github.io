@@ -1,0 +1,5 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": { "namespace": "android_app", "package_name": "com.rmsoftware.cipherpost",
+              "sha256_cert_fingerprints": ["69:8E:D9:28:3A:AF:14:4E:99:73:64:3A:73:30:8E:99:92:44:24:16:FF:B1:1F:DC:D3:B8:AC:5D:6A:C0:9C:A8"] }
+}]
