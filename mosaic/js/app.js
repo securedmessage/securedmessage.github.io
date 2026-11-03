@@ -5,10 +5,13 @@ const APP_VERSION = '1.1.0';
 const ROOT = document.getElementById('app');
 
 // ---------- Backend selection ----------
+// When a server is built into config.js the app always uses it: no demo mode, no server switching.
+const BUILT_IN_SERVER = !!(window.MOSAIC_CONFIG?.url && window.MOSAIC_CONFIG?.key);
 function serverConfig() {
-  try { const s = JSON.parse(store.getItem('mosaic_server')); if (s && s.url && s.key) return s; } catch {}
   const c = window.MOSAIC_CONFIG || {};
-  return c.url && c.key ? { url: c.url, key: c.key } : null;
+  if (BUILT_IN_SERVER) { store.removeItem('mosaic_server'); return { url: c.url, key: c.key }; }
+  try { const s = JSON.parse(store.getItem('mosaic_server')); if (s && s.url && s.key) return s; } catch {}
+  return null;
 }
 let api, serverError = null;
 {
@@ -186,9 +189,10 @@ function ServerErrorScreen() {
     <h1 class="logo">Mosaic</h1>
     <p class="tag">Can't connect to the server</p>
     <div class="demo-note" style="text-align:left">${esc(serverError)}</div>
-    <button class="btn primary big" id="se-server">Server settings</button>
+    ${BUILT_IN_SERVER ? '<button class="btn primary big" id="se-retry">Try again</button>' : '<button class="btn primary big" id="se-server">Server settings</button>'}
   </div></div>`);
-  $('#se-server', root).onclick = () => push(ServerScreen);
+  $('#se-server', root)?.addEventListener('click', () => push(ServerScreen));
+  $('#se-retry', root)?.addEventListener('click', () => location.reload());
   return { el: root };
 }
 
@@ -220,9 +224,8 @@ function AuthScreen() {
       <button class="btn primary big" id="a-go">Log in</button>
       <div class="err" id="a-err"></div>
       <div class="swap"><span id="a-q">Don't have an account?</span> <button id="a-swap">Sign up</button></div>
-      ${api.mode === 'demo' ? `<div class="demo-note">Demo mode — accounts and posts stay on this device. Sample people will follow and reply to you.</div>`
-        : `<div class="demo-note">Connected to ${esc(new URL(serverConfig().url).host)}</div>`}
-      <div style="text-align:center;margin-top:6px" ${window.MOSAIC_PREVIEW ? 'hidden' : ''}><button class="linkbtn" id="a-server">${api.mode === 'demo' ? 'Connect to a server' : 'Server settings'}</button></div>
+      ${api.mode === 'demo' ? `<div class="demo-note">Demo mode — accounts and posts stay on this device. Sample people will follow and reply to you.</div>` : ''}
+      <div style="text-align:center;margin-top:6px" ${window.MOSAIC_PREVIEW || BUILT_IN_SERVER ? 'hidden' : ''}><button class="linkbtn" id="a-server">${api.mode === 'demo' ? 'Connect to a server' : 'Server settings'}</button></div>
     </div></div>`);
   const paint = () => {
     $('#a-name', root).classList.toggle('hidden', !signup);

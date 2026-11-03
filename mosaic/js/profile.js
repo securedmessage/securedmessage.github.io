@@ -193,7 +193,7 @@ function SettingsScreen() {
     <div class="set-group">App</div>
     <button class="set-row" data-a="edit">${icon('user')}Edit profile</button>
     <button class="set-row" data-a="theme">${icon('moon')}Appearance<span class="val">${themeName()}</span></button>
-    <button class="set-row" data-a="server" ${window.MOSAIC_PREVIEW ? 'hidden' : ''}>${icon('server')}Server<span class="val">${api.mode === 'demo' ? 'Demo mode' : 'Connected'}</span></button>
+    <button class="set-row" data-a="server" ${window.MOSAIC_PREVIEW || BUILT_IN_SERVER ? 'hidden' : ''}>${icon('server')}Server<span class="val">${api.mode === 'demo' ? 'Demo mode' : 'Connected'}</span></button>
     ${api.mode === 'demo' ? `<button class="set-row" data-a="reset">${icon('trash')}Reset demo data</button>` : ''}
     <button class="set-row" data-a="about">${icon('info')}About Mosaic</button>
     <button class="set-row" data-a="logout" style="color:var(--like)">${icon('logout')}Log out ${esc(state.me.username)}</button>
