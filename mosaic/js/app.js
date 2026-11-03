@@ -10,11 +10,16 @@ function serverConfig() {
   const c = window.MOSAIC_CONFIG || {};
   return c.url && c.key ? { url: c.url, key: c.key } : null;
 }
-let api;
+let api, serverError = null;
 {
   const cfg = serverConfig();
-  if (cfg && window.supabase) {
-    try { api = new SupabaseAPI(cfg.url, cfg.key); } catch (e) { console.error(e); }
+  if (cfg) {
+    // A server is configured: never fall back to demo mode silently.
+    if (!window.supabase) serverError = 'The connection library is missing from this build (www/lib/supabase.js).';
+    else {
+      try { api = new SupabaseAPI(cfg.url, cfg.key); }
+      catch (e) { console.error(e); serverError = 'The server address or key is not valid: ' + (e.message || e); }
+    }
   }
   if (!api) api = new DemoAPI();
 }
@@ -156,7 +161,19 @@ api.on('notification', () => { state.unreadNotifs++; paintBadges(); });
 setInterval(() => { if (!document.hidden) refreshBadges(); }, 60000);
 
 // ---------- Boot ----------
+function ServerErrorScreen() {
+  const root = el(`<div class="auth"><div class="inner">
+    <h1 class="logo">Mosaic</h1>
+    <p class="tag">Can't connect to the server</p>
+    <div class="demo-note" style="text-align:left">${esc(serverError)}</div>
+    <button class="btn primary big" id="se-server">Server settings</button>
+  </div></div>`);
+  $('#se-server', root).onclick = () => push(ServerScreen);
+  return { el: root };
+}
+
 async function boot() {
+  if (serverError) { resetTo(ServerErrorScreen); return; }
   try { state.me = await api.session(); } catch (e) { console.warn(e); state.me = null; }
   if (state.me) enterApp(); else resetTo(AuthScreen);
 }
@@ -182,7 +199,8 @@ function AuthScreen() {
       <button class="btn primary big" id="a-go">Log in</button>
       <div class="err" id="a-err"></div>
       <div class="swap"><span id="a-q">Don't have an account?</span> <button id="a-swap">Sign up</button></div>
-      ${api.mode === 'demo' ? `<div class="demo-note">Demo mode — accounts and posts stay on this device. Sample people will follow and reply to you.</div>` : ''}
+      ${api.mode === 'demo' ? `<div class="demo-note">Demo mode — accounts and posts stay on this device. Sample people will follow and reply to you.</div>`
+        : `<div class="demo-note">Connected to ${esc(new URL(serverConfig().url).host)}</div>`}
       <div style="text-align:center;margin-top:6px" ${window.MOSAIC_PREVIEW ? 'hidden' : ''}><button class="linkbtn" id="a-server">${api.mode === 'demo' ? 'Connect to a server' : 'Server settings'}</button></div>
     </div></div>`);
   const paint = () => {
