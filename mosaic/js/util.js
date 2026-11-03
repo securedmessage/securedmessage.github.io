@@ -16,8 +16,8 @@ function esc(s) {
 
 // Turn plain text into safe HTML with @mentions and #tags highlighted.
 function richText(s) {
-  return esc(s).replace(/(^|\s)([@#][\w.]{1,30})/g, (m, sp, tag) =>
-    `${sp}<span class="mention" ${tag[0] === '@' ? `data-mention="${tag.slice(1)}"` : ''}>${tag}</span>`);
+  return esc(s).replace(/(^|\s)(@[\w.]{1,30}|#(?=[\w.]*[A-Za-z_])[\w.]{1,30})/g, (m, sp, tag) =>
+    `${sp}<span class="mention" ${tag[0] === '@' ? `data-mention="${tag.slice(1).replace(/\.+$/, '')}"` : `data-hashtag="${tag.slice(1).replace(/\.+$/, '').toLowerCase()}"`}>${tag}</span>`);
 }
 
 function el(html) {
@@ -93,6 +93,25 @@ const ICONS = {
   check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
   newmsg: '<path d="M12 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z"/>',
   trash: '<path d="M4 7h16M10 11v6M14 11v6M5.5 7l1 12a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>',
+  reels: '<rect x="3" y="3" width="18" height="18" rx="5"/><path d="M3 8.5h18M8 3l3 5.5M13.5 3l3 5.5"/><path d="M10 12.2v5l4.3-2.5z" fill="currentColor"/>',
+  tag: '<path d="M12 12.5a3.3 3.3 0 1 0 0-6.6 3.3 3.3 0 0 0 0 6.6zM5.5 20a6.5 6.5 0 0 1 13 0"/><rect x="2.5" y="2.5" width="19" height="19" rx="4"/>',
+  mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/>',
+  play: '<path d="M7 4.5v15l12-7.5z" fill="currentColor"/>',
+  pause: '<path d="M7 4.5h3.5v15H7zM13.5 4.5H17v15h-3.5z" fill="currentColor"/>',
+  lock: '<rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>',
+  reply: '<path d="M10 8 4.5 12.5 10 17"/><path d="M5 12.5h9a5.5 5.5 0 0 1 5.5 5.5v1"/>',
+  smile: '<circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.5 4.5 0 0 0 7 0M9 9.5h.01M15 9.5h.01"/>',
+  text: '<path d="M5 6.5V4.5h14v2M12 4.5v15M9 19.5h6"/>',
+  pen: '<path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19z"/>',
+  undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>',
+  group: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/>',
+  video: '<rect x="2.5" y="5.5" width="13" height="13" rx="2.5"/><path d="m15.5 10.5 6-3.5v10l-6-3.5z"/>',
+  flag: '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
+  block: '<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>',
+  volume: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>',
+  mute: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/>',
+  hash: '<path d="M9.5 3.5 7.5 20.5M16.5 3.5l-2 17M4 9h16.5M3.5 15H20"/>',
+  people: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/><path d="M19 3.5v5M16.5 6h5"/>',
 };
 function icon(name, cls = '') {
   const filled = name.endsWith('F') || cls.includes('filled');
@@ -177,4 +196,34 @@ function demoArt(seed, w = 1080, h = 1080) {
   }
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}"><defs><linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c(0, 70, 82)}"/><stop offset="1" stop-color="${c(60, 65, 52)}"/></linearGradient></defs><rect width="${w}" height="${h}" fill="url(#b)"/>${shapes}</svg>`;
   return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+
+// ---------- Video and audio helpers ----------
+function fmtDuration(sec) {
+  sec = Math.max(0, Math.round(sec || 0));
+  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+}
+// Reads a video file's length and grabs a frame to use as its thumbnail.
+function videoInfo(file) {
+  return new Promise((resolve, reject) => {
+    const v = document.createElement('video');
+    const url = URL.createObjectURL(file);
+    v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = url;
+    const done = (fn, arg) => { v.onloadeddata = v.onseeked = v.onerror = null; fn(arg); };
+    v.onerror = () => done(reject, new Error("That video couldn't be opened. Try an MP4 file."));
+    v.onloadeddata = () => { v.currentTime = Math.min(0.5, (v.duration || 1) / 3); };
+    v.onseeked = () => {
+      try {
+        const max = 1080, scale = Math.min(1, max / Math.max(v.videoWidth, v.videoHeight));
+        const c = document.createElement('canvas');
+        c.width = Math.round(v.videoWidth * scale) || 720; c.height = Math.round(v.videoHeight * scale) || 1280;
+        c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+        done(resolve, { url, duration: v.duration, width: v.videoWidth, height: v.videoHeight, poster: c });
+      } catch (e) { done(reject, e); }
+    };
+  });
+}
+function extFromType(type, fallback) {
+  const m = { 'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov', 'audio/webm': 'webm', 'audio/ogg': 'ogg', 'audio/mp4': 'm4a', 'audio/mpeg': 'mp3', 'audio/aac': 'aac' };
+  return m[(type || '').split(';')[0]] || fallback;
 }
