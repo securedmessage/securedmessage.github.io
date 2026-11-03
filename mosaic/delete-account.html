@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Delete Your Mosaic Account</title>
+<link rel="stylesheet" href="legal.css">
+</head>
+<body>
+<div class="wrap">
+  <header><a class="logo" href="./">Mosaic</a>
+    <nav><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="delete-account.html" aria-current="page">Delete account</a></nav></header>
+
+  <h1>Delete your Mosaic account</h1>
+  <p class="updated">Mosaic by RM Software</p>
+
+  <p>You can delete your account in the app under <b>Settings → Delete account</b>, or right here by signing in below.</p>
+
+  <h2>What gets deleted</h2>
+  <ul>
+    <li>Your profile, username, photo and bio</li>
+    <li>Your posts, reels and stories, including the photos, videos and voice messages you uploaded</li>
+    <li>Your comments, likes, saves, follows, follow requests and photo tags</li>
+    <li>The messages and reactions you sent, and your notifications and reports</li>
+  </ul>
+  <p>Deletion happens right away and can't be undone. Group chats you were in continue for the other members without you. Copies may remain in our hosting provider's backups for up to 30 days before they're overwritten. Nothing is kept after that.</p>
+
+  <form class="card" id="signin" novalidate>
+    <b>Sign in to delete your account</b>
+    <label for="email">Email<input type="email" id="email" autocomplete="email" required></label>
+    <label for="password">Password<input type="password" id="password" autocomplete="current-password" required></label>
+    <button type="submit" id="signin-btn">Continue</button>
+    <div class="msg" id="signin-msg" role="status"></div>
+  </form>
+
+  <div class="card" id="confirm" hidden>
+    <b>Delete <span id="who"></span>?</b>
+    <p style="margin:0">This permanently deletes the account and everything listed above.</p>
+    <label for="typed">Type DELETE to confirm<input type="text" id="typed" autocomplete="off" autocapitalize="characters"></label>
+    <button class="danger" id="delete-btn" disabled>Delete my account</button>
+    <button class="plain" id="cancel-btn" type="button">Cancel</button>
+    <div class="msg" id="confirm-msg" role="status"></div>
+  </div>
+
+  <div class="card" id="done" hidden>
+    <b>Your account was deleted.</b>
+    <p style="margin:0">Your profile and everything you posted or sent have been removed from Mosaic.</p>
+  </div>
+
+  <p>Can't sign in? Email <a href="mailto:540vdc@gmail.com?subject=Delete%20my%20Mosaic%20account">540vdc@gmail.com</a> from the address on your account with the subject "Delete my Mosaic account", and include your username. We'll confirm it's you and delete the account within 7 days.</p>
+
+  <footer>© 2026 RM Software · <a href="mailto:540vdc@gmail.com">540vdc@gmail.com</a></footer>
+</div>
+
+<script src="config.js"></script>
+<script src="lib/supabase.js"></script>
+<script>
+'use strict';
+(function () {
+  const $ = id => document.getElementById(id);
+  const cfg = window.MOSAIC_CONFIG || {};
+  const say = (id, text, isErr) => { const m = $(id); m.textContent = text; m.classList.toggle('err', !!isErr); };
+  if (!window.supabase || !cfg.url || !cfg.key) {
+    say('signin-msg', "Sign-in isn't available on this page right now. Use the app, or email us at the address below.", true);
+    $('signin-btn').disabled = true;
+    return;
+  }
+  // A separate storage key keeps this page from signing anyone out of the web app.
+  const sb = supabase.createClient(cfg.url, cfg.key, { auth: { persistSession: false, storageKey: 'mosaic_delete_page' } });
+  let user = null;
+
+  $('signin').addEventListener('submit', async e => {
+    e.preventDefault();
+    const email = $('email').value.trim(), password = $('password').value;
+    if (!email || !password) { say('signin-msg', 'Enter your email and password.', true); return; }
+    $('signin-btn').disabled = true; say('signin-msg', 'Signing in…');
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    $('signin-btn').disabled = false;
+    if (error) {
+      const text = /invalid/i.test(error.message) ? 'Incorrect email or password.'
+        : /fetch|network/i.test(error.message) ? "Couldn't reach Mosaic. Check your connection and try again." : error.message;
+      say('signin-msg', text, true); return;
+    }
+    user = data.user;
+    const { data: profile } = await sb.from('profiles').select('username').eq('id', user.id).maybeSingle();
+    $('who').textContent = profile ? '@' + profile.username : email;
+    say('signin-msg', '');
+    $('signin').hidden = true; $('confirm').hidden = false; $('typed').focus();
+  });
+
+  $('typed').addEventListener('input', () => { $('delete-btn').disabled = $('typed').value.trim().toUpperCase() !== 'DELETE'; });
+
+  $('cancel-btn').addEventListener('click', async () => {
+    await sb.auth.signOut({ scope: 'local' }).catch(() => {});
+    user = null; $('typed').value = ''; $('password').value = '';
+    $('confirm').hidden = true; $('signin').hidden = false;
+  });
+
+  $('delete-btn').addEventListener('click', async () => {
+    $('delete-btn').disabled = true; say('confirm-msg', 'Deleting your files…');
+    try {
+      const bucket = sb.storage.from('media');
+      for (;;) {
+        const { data, error } = await bucket.list(user.id, { limit: 1000 });
+        if (error) throw error;
+        const paths = (data || []).filter(f => f.name && f.id).map(f => `${user.id}/${f.name}`);
+        if (!paths.length) break;
+        const r = await bucket.remove(paths);
+        if (r.error) throw r.error;
+        if (paths.length < 1000) break;
+      }
+      say('confirm-msg', 'Deleting your account…');
+      const { error } = await sb.rpc('delete_my_account');
+      if (error) throw error;
+      await sb.auth.signOut({ scope: 'local' }).catch(() => {});
+      $('confirm').hidden = true; $('done').hidden = false;
+    } catch (err) {
+      $('delete-btn').disabled = false;
+      say('confirm-msg', "Something went wrong and your account wasn't deleted: " + (err.message || err) + '. Try again, or email us.', true);
+    }
+  });
+})();
+</script>
+</body>
+</html>

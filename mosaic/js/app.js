@@ -1,8 +1,12 @@
 // Mosaic — app shell: backend, navigation, shared UI helpers, sign-in, tabs.  (c) RM Software
 'use strict';
 
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 const ROOT = document.getElementById('app');
+// Public pages Google Play links to: privacy policy, terms and web account deletion.
+const LEGAL_BASE = 'https://securedmessage.github.io/mosaic/';
+const MIN_AGE = 16;
+const legalLink = (page, label) => `<a href="${LEGAL_BASE}${page}" target="_blank" rel="noopener">${label}</a>`;
 
 // ---------- Backend selection ----------
 // When a server is built into config.js the app always uses it: no demo mode, no server switching.
@@ -227,6 +231,7 @@ function AuthScreen() {
       <input class="field" id="a-user" placeholder="Username" autocapitalize="none" autocomplete="username">
       <input class="field" id="a-email" type="email" placeholder="Email" autocapitalize="none" autocomplete="email">
       <input class="field" id="a-pass" type="password" placeholder="Password" autocomplete="current-password">
+      <label class="agree" id="a-agree-row"><input type="checkbox" id="a-agree"><span>I'm ${MIN_AGE} or older and I agree to the ${legalLink('terms.html', 'Terms of Use')} and ${legalLink('privacy.html', 'Privacy Policy')}.</span></label>
       <button class="btn primary big" id="a-go">Log in</button>
       <div class="err" id="a-err"></div>
       <div class="swap"><span id="a-q">Don't have an account?</span> <button id="a-swap">Sign up</button></div>
@@ -236,6 +241,7 @@ function AuthScreen() {
   const paint = () => {
     $('#a-name', root).classList.toggle('hidden', !signup);
     $('#a-user', root).classList.toggle('hidden', !signup);
+    $('#a-agree-row', root).classList.toggle('hidden', !signup);
     $('#a-go', root).textContent = signup ? 'Sign up' : 'Log in';
     $('#a-q', root).textContent = signup ? 'Have an account?' : "Don't have an account?";
     $('#a-swap', root).textContent = signup ? 'Log in' : 'Sign up';
@@ -250,6 +256,7 @@ function AuthScreen() {
     err.textContent = '';
     if (!email || !pass) { err.textContent = 'Enter your email and password.'; return; }
     if (signup && (!$('#a-name', root).value.trim() || !$('#a-user', root).value.trim())) { err.textContent = 'Enter your name and a username.'; return; }
+    if (signup && !$('#a-agree', root).checked) { err.textContent = `To sign up, confirm you're ${MIN_AGE} or older and agree to the Terms and Privacy Policy.`; return; }
     btn.disabled = true;
     try {
       state.me = signup ? await api.signUp(email, pass, $('#a-user', root).value, $('#a-name', root).value) : await api.signIn(email, pass);

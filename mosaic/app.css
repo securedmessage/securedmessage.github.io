@@ -443,3 +443,10 @@ svg.i.bold { stroke-width: 2.6; }
 .addcircle { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); display: grid; place-items: center; }
 .addcircle svg { width: 22px; height: 22px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+/* ===================== Update 3 ===================== */
+.agree { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--fg2); line-height: 1.4; text-align: left; }
+.agree input { margin-top: 2px; width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
+.agree a, a.set-row { color: inherit; text-decoration: none; }
+.agree a { color: var(--accent); font-weight: 600; }
+.btn.danger-btn { background: var(--like); color: #fff; }

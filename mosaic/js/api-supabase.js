@@ -45,6 +45,22 @@ class SupabaseAPI extends Emitter {
     return this.getProfile(this.userId);
   }
   async signOut() { this.stop(); await this.sb.auth.signOut(); this.userId = null; }
+  // Permanently deletes the signed-in account: uploaded files first, then everything in the database.
+  async deleteAccount() {
+    const bucket = this.sb.storage.from('media');
+    for (;;) {
+      const { data, error } = await bucket.list(this.userId, { limit: 1000 });
+      this._err(error);
+      const paths = (data || []).filter(f => f.name && f.id).map(f => `${this.userId}/${f.name}`);
+      if (!paths.length) break;
+      this._err((await bucket.remove(paths)).error);
+      if (paths.length < 1000) break;
+    }
+    this._err((await this.sb.rpc('delete_my_account')).error);
+    this.stop();
+    await this.sb.auth.signOut({ scope: 'local' }).catch(() => {});
+    this.userId = null;
+  }
 
   // ---------- profiles & relationships ----------
   async getProfile(id) { return this._data(this.sb.from('profiles').select('*').eq('id', id).maybeSingle()); }

@@ -196,7 +196,11 @@ function SettingsScreen() {
     <button class="set-row" data-a="server" ${window.MOSAIC_PREVIEW || BUILT_IN_SERVER ? 'hidden' : ''}>${icon('server')}Server<span class="val">${api.mode === 'demo' ? 'Demo mode' : 'Connected'}</span></button>
     ${api.mode === 'demo' ? `<button class="set-row" data-a="reset">${icon('trash')}Reset demo data</button>` : ''}
     <button class="set-row" data-a="about">${icon('info')}About Mosaic</button>
-    <button class="set-row" data-a="logout" style="color:var(--like)">${icon('logout')}Log out ${esc(state.me.username)}</button>
+    <a class="set-row" href="${LEGAL_BASE}privacy.html" target="_blank" rel="noopener">${icon('lock')}Privacy Policy</a>
+    <a class="set-row" href="${LEGAL_BASE}terms.html" target="_blank" rel="noopener">${icon('flag')}Terms of Use</a>
+    <div class="set-group">Account</div>
+    <button class="set-row" data-a="logout">${icon('logout')}Log out ${esc(state.me.username)}</button>
+    <button class="set-row" data-a="delete" style="color:var(--like)">${icon('trash')}Delete account</button>
   </div></div>`);
   wireBack(root);
   const priv = $('#st-private', root), act = $('#st-active', root);
@@ -224,8 +228,34 @@ function SettingsScreen() {
     }
     if (a === 'reset' && await confirmDialog('Erase all demo accounts, posts and chats on this device?', 'Reset')) { api.reset(); location.reload(); }
     if (a === 'logout' && await confirmDialog('Log out of Mosaic?', 'Log out')) { await api.signOut(); state.me = null; resetTo(AuthScreen); }
+    if (a === 'delete') deleteAccountFlow();
   });
   return { el: root };
+}
+
+// Permanently deletes the account after the person types DELETE.
+function deleteAccountFlow() {
+  const content = el(`<div style="padding:12px 16px 4px">
+    <p style="margin-top:0">This permanently deletes <b>@${esc(state.me.username)}</b> and everything in it: your profile, posts, reels, stories, comments, likes, followers, and the messages you sent. It can't be undone.</p>
+    <p class="sub">Group chats you're in will continue for the other members without you.</p>
+    <label class="lbl" for="del-confirm">Type DELETE to confirm</label>
+    <input class="field" id="del-confirm" autocapitalize="characters" autocomplete="off">
+    <div class="row" style="margin-top:14px"><button class="btn block" data-cancel>Cancel</button><button class="btn block danger-btn" data-del disabled>Delete account</button></div></div>`);
+  const s = sheet({ title: 'Delete your account?', content });
+  const input = $('#del-confirm', content), btn = $('[data-del]', content);
+  input.oninput = () => { btn.disabled = input.value.trim().toUpperCase() !== 'DELETE'; };
+  $('[data-cancel]', content).onclick = () => s.close(null);
+  btn.onclick = async () => {
+    btn.disabled = true; btn.textContent = 'Deleting…';
+    try {
+      await api.deleteAccount();
+      s.close(null);
+      state.me = null;
+      resetTo(AuthScreen);
+      toast('Your account and everything in it were deleted.', 4000);
+    } catch (e) { btn.disabled = false; btn.textContent = 'Delete account'; fail(e); }
+  };
+  setTimeout(() => input.focus(), 250);
 }
 
 function BlockedScreen() {

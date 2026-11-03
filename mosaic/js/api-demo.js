@@ -140,6 +140,29 @@ class DemoAPI extends Emitter {
     return this._pub(this._p(a.id));
   }
   async signOut() { this.userId = null; store.removeItem(DEMO_SESSION); }
+  async deleteAccount() {
+    const me = this.userId, db = this.db;
+    const posts = new Set(db.posts.filter(p => p.user_id === me).map(p => p.id));
+    const comments = new Set(db.comments.filter(c => c.user_id === me || posts.has(c.post_id)).map(c => c.id));
+    db.accounts = db.accounts.filter(a => a.id !== me);
+    db.profiles = db.profiles.filter(p => p.id !== me);
+    db.posts = db.posts.filter(p => p.user_id !== me);
+    db.comments = db.comments.filter(c => !comments.has(c.id) && !comments.has(c.parent_id));
+    db.comment_likes = db.comment_likes.filter(l => l.user_id !== me && !comments.has(l.comment_id));
+    ['likes', 'saves', 'post_tags'].forEach(t => db[t] = db[t].filter(x => x.user_id !== me && !posts.has(x.post_id)));
+    db.follows = db.follows.filter(f => f.follower_id !== me && f.following_id !== me);
+    db.follow_requests = db.follow_requests.filter(r => r.requester_id !== me && r.target_id !== me);
+    db.blocks = db.blocks.filter(b => b.blocker_id !== me && b.blocked_id !== me);
+    db.reports = db.reports.filter(r => r.reporter_id !== me);
+    db.stories = db.stories.filter(s => s.user_id !== me);
+    db.notifications = db.notifications.filter(n => n.user_id !== me && n.actor_id !== me);
+    const msgs = new Set(db.messages.filter(m => m.sender_id === me).map(m => m.id));
+    db.messages = db.messages.filter(m => !msgs.has(m.id));
+    db.reactions = db.reactions.filter(r => r.user_id !== me && !msgs.has(r.message_id));
+    db.members = db.members.filter(m => m.user_id !== me);
+    this._save();
+    await this.signOut();
+  }
 
   // ---------- profiles & relationships ----------
   async getProfile(id) { return this._hasBlockedMe(id) ? null : this._pub(this._p(id)); }
