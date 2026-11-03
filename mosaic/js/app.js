@@ -127,7 +127,12 @@ const stack = [];
 function push(builder, ...args) {
   const scr = builder(...args);
   stack.at(-1)?.onHide?.();
+  const below = stack.at(-1);
   scr.el.classList.add('screen', 'push');
+  scr.el.addEventListener('animationend', () => {
+    scr.el.classList.remove('push');
+    if (below && stack.at(-1) !== below) below.el.classList.add('covered');
+  }, { once: true });
   ROOT.appendChild(scr.el);
   stack.push(scr);
   scr.onShow?.();
@@ -137,8 +142,9 @@ function pop() {
   if (stack.length <= 1) return false;
   const scr = stack.pop();
   scr.onDestroy?.();
+  stack.at(-1).el.classList.remove('covered');
   scr.el.classList.add('pop');
-  setTimeout(() => scr.el.remove(), 170);
+  setTimeout(() => scr.el.remove(), 200);
   stack.at(-1).onShow?.();
   return true;
 }
