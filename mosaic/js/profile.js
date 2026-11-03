@@ -130,7 +130,7 @@ async function blockFlow(user) {
   try { await api.block(user.id); toast(`Blocked ${user.username}`); reloadHome(); return true; } catch (e) { fail(e); return false; }
 }
 
-const REPORT_REASONS = ["It's spam", 'Nudity or sexual content', 'Hate speech or symbols', 'Bullying or harassment', 'Violence or dangerous content', 'Scam or fraud', 'False information', 'Something else'];
+const REPORT_REASONS = ['Child safety concern', "It's spam", 'Nudity or sexual content', 'Hate speech or symbols', 'Bullying or harassment', 'Violence or dangerous content', 'Scam or fraud', 'False information', 'Something else'];
 async function reportFlow(kind, targetId) {
   const what = { post: 'post', user: 'account', comment: 'comment', message: 'message' }[kind];
   const reason = await sheet({ title: `Why are you reporting this ${what}?`, options: [...REPORT_REASONS.map(r => ({ label: r, value: r })), { label: 'Cancel', value: null }] });

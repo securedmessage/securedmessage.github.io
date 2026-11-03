@@ -1,7 +1,7 @@
 // Mosaic — app shell: backend, navigation, shared UI helpers, sign-in, tabs.  (c) RM Software
 'use strict';
 
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.2.1';
 const ROOT = document.getElementById('app');
 // Public pages Google Play links to: privacy policy, terms and web account deletion.
 const LEGAL_BASE = 'https://securedmessage.github.io/mosaic/';
