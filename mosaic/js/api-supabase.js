@@ -127,6 +127,7 @@ class SupabaseAPI extends Emitter {
     const r = await this._data(this.sb.from('posts').insert({ user_id: this.userId, image_url, caption }).select(this._postSelect()).single());
     return (await this._enrich([r]))[0];
   }
+  async updatePost(id, caption) { this._err((await this.sb.from('posts').update({ caption }).eq('id', id)).error); }
   async deletePost(id) { this._err((await this.sb.from('posts').delete().eq('id', id)).error); }
   async like(id) { const { error } = await this.sb.from('likes').insert({ post_id: id, user_id: this.userId }); if (error && !/duplicate/i.test(error.message)) this._err(error); }
   async unlike(id) { this._err((await this.sb.from('likes').delete().eq('post_id', id).eq('user_id', this.userId)).error); }

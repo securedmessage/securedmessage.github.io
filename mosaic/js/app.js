@@ -433,11 +433,12 @@ function PostCard(p, { onDelete } = {}) {
   };
   $('[data-more]', node).onclick = async () => {
     const mine = p.user_id === state.me.id;
-    const opts = mine ? [{ label: 'Delete post', value: 'del', danger: true }] : [{ label: 'View profile', value: 'prof' }];
+    const opts = mine ? [{ label: 'Edit caption', value: 'edit' }, { label: 'Delete post', value: 'del', danger: true }] : [{ label: 'View profile', value: 'prof' }];
     opts.push({ label: 'Share to…', value: 'share' }, { label: 'Cancel', value: null });
     const v = await sheet({ options: opts });
     if (v === 'prof') openProfile(p.user_id);
     if (v === 'share') sharePost(p);
+    if (v === 'edit') editCaption(p, node);
     if (v === 'del' && await confirmDialog('Delete this post?')) {
       try { await api.deletePost(p.id); node.remove(); toast('Post deleted'); onDelete?.(p); } catch (e) { fail(e); }
     }
@@ -445,6 +446,30 @@ function PostCard(p, { onDelete } = {}) {
   $$('[data-mention]', node).forEach(m => m.onclick = async (e) => { e.stopPropagation(); const u = await api.getProfileByUsername(m.dataset.mention); if (u) openProfile(u.id); });
   paint();
   return node;
+}
+
+// Lets the owner rewrite a post's caption, then redraws the card.
+function editCaption(p, node) {
+  const content = el(`<div style="padding:12px 16px 4px">
+    <textarea class="field" id="ec-text" maxlength="2200" placeholder="Write a caption…" style="min-height:110px"></textarea>
+    <div class="row" style="margin-top:12px"><button class="btn block" data-cancel>Cancel</button><button class="btn primary block" data-save-cap>Save</button></div></div>`);
+  const ta = $('#ec-text', content);
+  ta.value = p.caption || '';
+  sheet({ title: 'Edit caption', content });
+  const scrim = ROOT.lastElementChild;
+  $('[data-cancel]', content).onclick = () => scrim._close?.(null);
+  $('[data-save-cap]', content).onclick = async () => {
+    const btn = $('[data-save-cap]', content); btn.disabled = true;
+    try {
+      const caption = ta.value.trim();
+      await api.updatePost(p.id, caption);
+      p.caption = caption;
+      node.replaceWith(PostCard(p));
+      scrim._close?.(null);
+      toast('Caption updated');
+    } catch (e) { btn.disabled = false; fail(e); }
+  };
+  setTimeout(() => ta.focus(), 250);
 }
 
 async function sharePost(p) {
@@ -829,12 +854,13 @@ function CreateScreen(mode = 'post') {
       <div class="pick">${icon('image')}<div>Choose a photo from your gallery or take a new one.</div>
         <div class="row"><button class="btn primary" data-pick>Gallery</button><button class="btn" data-cam>Camera</button></div></div>
       <div class="editor hidden">
-        <div class="preview" style="margin-top:10px"><canvas></canvas></div>
-        <div class="filters"></div>
-        <div class="post-only" style="padding:0 14px 20px">
-          <textarea class="field" placeholder="Write a caption…" maxlength="2200"></textarea>
-          <div style="margin-top:10px"><button class="linkbtn" data-repick>Choose a different photo</button></div>
+        <div class="post-only" style="padding:12px 14px 0">
+          <label class="lbl" for="c-caption" style="margin-top:0">Caption</label>
+          <textarea class="field" id="c-caption" placeholder="Write a caption… (add #tags or @mention people)" maxlength="2200" style="min-height:70px"></textarea>
         </div>
+        <div class="preview" style="margin-top:12px"><canvas></canvas></div>
+        <div class="filters"></div>
+        <div class="post-only" style="padding:0 14px 20px"><button class="linkbtn" data-repick>Choose a different photo</button></div>
         <div class="story-only" style="padding:4px 14px 20px"><button class="linkbtn" data-repick2>Choose a different photo</button><p class="sub">Stories disappear after 24 hours.</p></div>
       </div>
     </div></div>`);
@@ -843,7 +869,7 @@ function CreateScreen(mode = 'post') {
   const paintMode = () => {
     $('h1', root).textContent = mode === 'post' ? 'New post' : 'New story';
     $$('.seg button', root).forEach(b => b.classList.toggle('on', b.dataset.m === mode));
-    $('.post-only', root).classList.toggle('hidden', mode !== 'post');
+    $$('.post-only', root).forEach(x => x.classList.toggle('hidden', mode !== 'post'));
     $('.story-only', root).classList.toggle('hidden', mode !== 'story');
     canvas.style.aspectRatio = mode === 'post' ? '1' : '9 / 16';
     canvas.style.objectFit = 'cover';

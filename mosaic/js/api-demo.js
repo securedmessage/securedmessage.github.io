@@ -200,6 +200,11 @@ class DemoAPI extends Emitter {
     }, 3000 + i * 2500));
     return this._enrichPost(p);
   }
+  async updatePost(id, caption) {
+    const p = this.db.posts.find(p => p.id === id && p.user_id === this.userId);
+    if (!p) throw new Error('You can only edit your own posts.');
+    p.caption = caption; this._save();
+  }
   async deletePost(id) {
     this.db.posts = this.db.posts.filter(p => p.id !== id);
     ['likes', 'saves', 'comments'].forEach(t => this.db[t] = this.db[t].filter(x => x.post_id !== id));
